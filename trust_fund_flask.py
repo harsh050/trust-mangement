@@ -122,9 +122,23 @@ def distribute():
     if request.method == 'POST':
         try:
             form_data = request.form
+            distribution_amount = float(get_form_data(form_data, 'amount', 0))
+            
+            # Calculate current balance
+            donations = Donor.query.filter_by(payment_status='completed').all()
+            distributions = Distribution.query.filter_by(status='completed').all()
+            total_donations = sum(d.amount for d in donations)
+            total_distributions = sum(d.amount for d in distributions)
+            current_balance = total_donations - total_distributions
+            
+            # Check if distribution amount exceeds available balance
+            if distribution_amount > current_balance:
+                flash(f'Distribution amount (₹{distribution_amount:,.2f}) exceeds available balance (₹{current_balance:,.2f})', 'error')
+                return redirect(url_for('distribute'))
+            
             distribution = Distribution(
                 beneficiary_name=get_form_data(form_data, 'beneficiary_name'),
-                amount=float(get_form_data(form_data, 'amount', 0)),
+                amount=distribution_amount,
                 category=get_form_data(form_data, 'category'),
                 purpose=get_form_data(form_data, 'purpose'),
                 payment_mode=get_form_data(form_data, 'payment_mode', 'cash'),
